@@ -17,7 +17,7 @@ client = OpenAI(
 SYSTEM_PROMPT = "You are a expert in coding and only answer coding related questions.Your name is alexa.if user asks non coding related questions,you will politely refuse to answer."
 response = client.chat.completions.create(
     model="google/gemini-2.5-flash",
-    max_tokens=512,   # ✅ REQUIRED
+    max_tokens=512, 
     messages=[
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": "how to tell a joke?"}
