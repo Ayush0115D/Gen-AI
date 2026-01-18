@@ -4,7 +4,8 @@ import os
 import json
 import requests
 import time
-
+from pydantic import BaseModel,Field
+from typing import Optional
 load_dotenv()
 
 client = OpenAI(
@@ -96,37 +97,42 @@ Assistant:
   "content": "The weather in Delhi is 🌫 with a temperature of 18°C."
 }
 """
+class MyOutputFormat(BaseModel):
+ step: str = Field(..., description="THE id of START, PLAN, TOOL, OBSERVE, OUTPUT etc")
+ content:Optional[str] = Field(None, description="The Optional string content for the step")
+ tool:Optional[str] = Field(None, description="The id of tool to call")
+ input:Optional[str] = Field(None, description="The input params for the tool")
 
 while True:
-    message_history = [{"role": "system", "content": SYSTEM_PROMPT}]
-    user_query = input("--> ")
-    message_history.append({"role": "user", "content": user_query})
+     message_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+     user_query = input("--> ")
+     message_history.append({"role": "user", "content": user_query})
 
-    for _ in range(10):
-        response = client.chat.completions.create(
+     for _ in range(10):
+        response = client.chat.completions.parse(
             model="google/gemini-2.5-flash",
-            response_format={"type": "json_object"},
+            response_format=MyOutputFormat,
             messages=message_history,
             max_tokens=512
         )
 
         raw = response.choices[0].message.content
-        parsed = json.loads(raw)
+       
         message_history.append({"role": "assistant", "content": raw})
+        parsed_result = response.choices[0].message.parsed
+        
 
-        step = parsed.get("step")
-
-        if step == "START":
-            print(parsed.get("content", ""))
+        if parsed_result.step == "START":
+            print ("🔥",parsed_result.content)
             continue
 
-        if step == "PLAN":
-            print(parsed.get("content", ""))
+        if parsed_result.step == "PLAN":
+            print("🛠️",parsed_result.content)
             continue
 
-        if step == "TOOL":
-            tool = parsed.get("tool")
-            inp = parsed.get("input")
+        if parsed_result.step == "TOOL":
+            tool = parsed_result.tool
+            inp = parsed_result.input
             print(f"{tool}({inp})")
             result = available_tools[tool](inp)
             observe = {
@@ -138,9 +144,15 @@ while True:
                 "role": "developer",
                 "content": json.dumps(observe)
             })
+            message_history.append({
+                "role": "system",
+              "content": "You now have all observations. Produce the final OUTPUT."
+            })
             print(result)
             continue
 
-        if step == "OUTPUT":
-            print(parsed.get("content", ""))
+        if parsed_result.step == "OUTPUT":
+            print("✅ Final Weather Report:")
+            print(parsed_result.content)
+            print()
             break
