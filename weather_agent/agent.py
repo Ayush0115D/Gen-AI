@@ -6,6 +6,7 @@ import requests
 import time
 from pydantic import BaseModel,Field
 from typing import Optional
+import subprocess
 load_dotenv()
 
 client = OpenAI(
@@ -13,6 +14,14 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1"
 )
 
+def run_command(cmd: str):
+    completed = subprocess.run(
+        cmd,
+        shell=True,
+        capture_output=True,
+        text=True
+    )
+    return completed.stdout.strip() or completed.stderr.strip()
 def get_weather(city: str):
     url = f"https://wttr.in/{city}?format=3"
     headers = {"User-Agent": "curl"}
@@ -26,7 +35,8 @@ def get_weather(city: str):
     return "Weather service unreachable"
 
 available_tools = {
-    "get_weather": get_weather
+    "get_weather": get_weather,
+    "run_command": run_command
 }
 
 SYSTEM_PROMPT = """
@@ -60,10 +70,15 @@ JSON format:
   "output": "string"
 }
 
-Available tool:
+Available tools:
 get_weather(city: string)
-Example interaction:
-User: What is the weather in Delhi?
+run_command(cmd: string):Takes a system linux command as string and executes command on user system and returns the output from that command.
+example:
+You are a general-purpose agent.
+Tools may return weather info OR system command output.
+Your OUTPUT must summarize the actual task result, not weather by default.
+If writing files on Windows, use PowerShell here-strings with Out-File.
+Never use echo for multiline content
 
 Assistant:
 {
@@ -113,7 +128,7 @@ while True:
             model="google/gemini-2.5-flash",
             response_format=MyOutputFormat,
             messages=message_history,
-            max_tokens=512
+            max_tokens=2048
         )
 
         raw = response.choices[0].message.content
@@ -134,6 +149,9 @@ while True:
             tool = parsed_result.tool
             inp = parsed_result.input
             print(f"{tool}({inp})")
+            
+      
+
             result = available_tools[tool](inp)
             observe = {
                 "step": "OBSERVE",
@@ -152,7 +170,7 @@ while True:
             continue
 
         if parsed_result.step == "OUTPUT":
-            print("✅ Final Weather Report:")
+            print("✅ Final Result:")
             print(parsed_result.content)
-            print()
+           
             break
