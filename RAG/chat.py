@@ -28,7 +28,14 @@ user_query = input("Ask something: ")
 search_results = vector_db.similarity_search(user_query, k=3)
 
 
-context="\n\n\n ".join([f"Pagecontent: {result.page_content} \n Page Number: {result.metadata['page_number']} \n File Location: {result.metadata['source']}" for result in search_results])
+context = "\n\n\n".join(
+    [
+        f"Pagecontent: {result.page_content}\n"
+        f"Page Number: {result.metadata.get('page_number', 'N/A')}\n"
+        f"File Location: {result.metadata.get('source', 'Unknown')}"
+        for result in search_results
+    ]
+)
 SYSTEM_PROMPT=f"""
 You are a helpful AI assistant who answere user queries based on the available context retrieved from the the pdf file along with page number and page_contents
 You should only answeer the user based on following context and navigate the user to the page number to know more
@@ -40,7 +47,8 @@ response = client.chat.completions.create(
     messages=[
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": user_query}
-    ]
+    ],
+     max_tokens=512
 )
 
 print("🤖:", response.choices[0].message.content)
