@@ -2,13 +2,27 @@ from typing_extensions import TypedDict
 from typing import Annotated
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph,START,END
-
+from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
+import os
+load_dotenv()
+llm = ChatOpenAI(
+    model="openai/gpt-4o-mini",  
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+       max_tokens=256, 
+    default_headers={
+        "HTTP-Referer": "http://localhost",   # required by OpenRouter
+        "X-Title": "LangGraph Chatbot"         # required by OpenRouter
+    }
+)
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 def chatbot(state: State):#chatbot-node
     print("\n\ninside chatbot node",state)
-    return {"messages": ["Hi, This is a message from ChatBot Node"]}
+    response = llm.invoke(state["messages"])
+    return { "messages": [response] }
 
 def samplenode(state: State):
     print("\n\ninside samplenode node",state)
