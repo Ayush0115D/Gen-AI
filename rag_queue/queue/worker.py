@@ -11,7 +11,7 @@ client = OpenAI(
 
 #VectorEmbedding
 embedding_model = OpenAIEmbeddings(
-    model="text-embedding-3-large",
+    model="openai/text-embedding-3-large",
     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     openai_api_base="https://openrouter.ai/api/v1",
     default_headers={
@@ -22,7 +22,7 @@ embedding_model = OpenAIEmbeddings(
 
 vector_db = QdrantVectorStore.from_existing_collection(
     url="http://localhost:6333",
-    collection_name="learning_rag",   
+    collection_name="learning rag",   
     embedding=embedding_model,
 )
 def process_query(user_query: str):
@@ -33,8 +33,9 @@ def process_query(user_query: str):
     context = "\n\n".join(
         [
             f"Pagecontent: {result.page_content}\n"
-            f"Page Number: {result.metadata['page_number']}\n"
-            f"File Location: {result.metadata['source']}"
+            f"Page Number: {result.metadata.get('page_number', 'N/A')}\n"
+            f"File Location: {result.metadata.get('source', 'N/A')}"
+
             for result in search_results
         ]
     )
@@ -51,7 +52,8 @@ def process_query(user_query: str):
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_query},
-        ]
+        ],
+        max_tokens=512
     )
 
     print("🤖:", response.choices[0].message.content)
